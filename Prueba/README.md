@@ -1,1 +1,1 @@
-# for forst class ED-1
+# for first class ED-1
