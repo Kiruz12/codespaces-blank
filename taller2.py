@@ -33,4 +33,92 @@ def search_name():
         print("Error: Formato de saldo inválido en el archivo")
     except Exception as e:
         print(f"Error inesperado: {e}")
-search_name()
+
+def saldos50():
+    try:
+        with open('datos.txt', 'r', encoding='utf-8') as archivo:
+            lineas = archivo.readlines()
+            
+            contador = 0
+            
+            
+            for linea in lineas:
+                if not linea.strip() or linea.startswith('Cedula'):
+                    continue
+                
+                datos = linea.strip().split(',')
+                
+                if len(datos) >= 3:
+                    try:
+                        saldo = float(datos[2].strip())
+                        if saldo > 50:
+                            contador += 1
+                    except ValueError:
+                        continue 
+            
+            print(f"\nCLIENTES CON SALDO MAYOR A 50")
+            print(f"Total de clientes: {contador}")
+    except FileNotFoundError:
+        print("Error: El archivo 'datos.txt' no existe.")
+    except Exception as e:
+        print(f"Error inesperado: {e}")
+
+
+def ordensaldo():
+    try:
+        with open('datos.txt', 'r', encoding='utf-8') as archivo:
+            lineas = archivo.readlines()
+            
+            clientes = []
+            
+            for linea in lineas:
+                try:
+                    if not linea.strip() or linea.startswith(('Cedula', 'Cédula')):
+                        continue
+                    
+                    datos = linea.strip().split(',')
+                    if len(datos) >= 3:
+                        nombre = datos[1].strip().title()
+                        saldo = float(datos[2].strip())
+                        clientes.append((nombre, saldo))
+                        
+                except (ValueError, IndexError):
+                    continue
+            
+            clientes_ordenados = sorted(clientes, key=lambda x: x[1])
+            
+            print(f"\nNOMBRES ORDENADOS POR SALDO")
+            print(("NOMBRE", "SALDO"))
+            
+            for nombre, saldo in clientes_ordenados:
+                print((nombre, saldo))
+                
+    except FileNotFoundError:
+        print("El archivo 'datos.txt' no existe.")
+    except Exception as e:
+        print(f"{e}")
+
+def menu():
+ print("\nOpciones:")
+ print("1. Buscar cliente por nombre")
+ print("2. Contar clientes con saldo mayor a 50")
+ print("3. Mostrar clientes ordenados por saldo")
+
+ try:
+    n = int(input("\nSeleccione una opción (1-3): ").strip())
+    
+    if n == 1:
+        search_name()
+    elif n == 2:
+        saldos50()
+    elif n == 3:
+        ordensaldo()
+    else:
+        print("Opción inválida")
+        
+ except ValueError:
+    print("Error: Debe ingresar un número")
+ except Exception as e:
+    print(f"Error: {e}")
+
+menu()
