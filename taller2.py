@@ -28,9 +28,9 @@ def search_name():
                 print(f"\nNo se encontró ningún cliente con el nombre '{name_search}'")
                 
     except FileNotFoundError:
-        print("Error: El archivo 'datos.txt' no existe.")
+        print("Error: El archivo 'datos.txt' no existe")
     except ValueError:
-        print("Error: Formato de saldo inválido en el archivo.")
+        print("Error: Formato de saldo inválido en el archivo")
     except Exception as e:
         print(f"Error inesperado: {e}")
 search_name()
