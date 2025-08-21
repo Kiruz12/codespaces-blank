@@ -85,18 +85,20 @@ def ordensaldo():
                 except (ValueError, IndexError):
                     continue
             
-            clientes_ordenados = sorted(clientes, key=lambda x: x[1])
+            def obtener_saldo(cliente):
+                return cliente[1]
+            
+            clientes_ordenados = sorted(clientes, key=obtener_saldo)
             
             print(f"\nNOMBRES ORDENADOS POR SALDO")
-            print(("NOMBRE", "SALDO"))
             
             for nombre, saldo in clientes_ordenados:
-                print((nombre, saldo))
+                print(f"{nombre} {saldo:.2f}")
                 
     except FileNotFoundError:
         print("El archivo 'datos.txt' no existe.")
     except Exception as e:
-        print(f"{e}")
+        print(f"Error: {e}")
 
 def menu():
  print("\nOpciones:")
