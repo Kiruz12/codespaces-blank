@@ -1,2 +1,9 @@
-encabezado
-linea 1linea 2linea 3linea 4
+Cedula,Nombre,Saldo
+
+12345,Jose,50.43
+
+54321,Dario,43.12
+
+39724,Maria,250.34
+
+17648,Sofia,582.41
