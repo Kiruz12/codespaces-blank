@@ -55,6 +55,19 @@ people = [{"name":"Juan","lastname":"lopez"},
 {"name":"Juan","lastname":"lopez"},
 {"name":"Juan","lastname":"lopez"}]
 
+def sequential_search_file(filename, value,param):
+    index_param = -1
+    with open(filename, "r") as file:
+       for i, line in enumerate(file):
+           arr = line.split(",")
+           if (i == 0):
+               try:
+                   index_param = arr.index(param)
+               except Exception:
+                   return " no encontré la columna"+ param
+           elif arr [index_param]== value:
+               return arr
+    return -1
 
 p = P()
 p.write("datos.txt", people)
