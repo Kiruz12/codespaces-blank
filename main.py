@@ -2,21 +2,21 @@ import csv
 import os
 from datetime import datetime
 
-# Clases para listas enlazadas
-class Nodo:
+# Clases para lista enlazada
+class NodoVenta:
     def __init__(self, datos):
-        self.datos = datos  # [id, tipo, id_referencia, nombre, precio, cantidad, estado, fecha]
+        self.datos = datos  # [id, producto, cantidad, precio_unitario, fecha]
         self.siguiente = None
 
-class ListaEnlazada:
+class ListaEnlazadaVentas:
     def __init__(self):
         self.cabeza = None
     
     def esta_vacia(self):
         return self.cabeza is None
     
-    def agregar(self, datos):
-        nuevo_nodo = Nodo(datos)
+    def agregar_venta(self, datos):
+        nuevo_nodo = NodoVenta(datos)
         if self.esta_vacia():
             self.cabeza = nuevo_nodo
         else:
@@ -25,67 +25,95 @@ class ListaEnlazada:
                 actual = actual.siguiente
             actual.siguiente = nuevo_nodo
     
-    def obtener_todos(self):
-        elementos = []
+    def obtener_todas_ventas(self):
+        ventas = []
         actual = self.cabeza
         while actual is not None:
-            elementos.append(actual.datos)
+            ventas.append(actual.datos)
             actual = actual.siguiente
-        return elementos
+        return ventas
     
-    def buscar_por_id(self, id_buscar, tipo=None):
+    def buscar_por_id(self, id_buscar):
         actual = self.cabeza
         while actual is not None:
-            if actual.datos[0] == id_buscar and (tipo is None or actual.datos[1] == tipo):
+            if actual.datos[0] == id_buscar:
                 return actual.datos
             actual = actual.siguiente
         return None
     
-    def buscar_por_tipo(self, tipo):
-        resultados = []
-        actual = self.cabeza
-        while actual is not None:
-            if actual.datos[1] == tipo:
-                resultados.append(actual.datos)
-            actual = actual.siguiente
-        return resultados
-    
-    def buscar_por_nombre(self, nombre_buscar, tipo=None):
-        resultados = []
-        actual = self.cabeza
-        while actual is not None:
-            if nombre_buscar.lower() in actual.datos[3].lower() and (tipo is None or actual.datos[1] == tipo):
-                resultados.append(actual.datos)
-            actual = actual.siguiente
-        return resultados
-    
-    def modificar_estado(self, id_modificar, nuevo_estado):
+    def modificar_venta(self, id_modificar, nuevo_producto, nueva_cantidad, nuevo_precio):
         actual = self.cabeza
         while actual is not None:
             if actual.datos[0] == id_modificar:
-                actual.datos[6] = nuevo_estado
+                if nuevo_producto:
+                    actual.datos[1] = nuevo_producto
+                if nueva_cantidad is not None:
+                    actual.datos[2] = nueva_cantidad
+                if nuevo_precio is not None:
+                    actual.datos[3] = nuevo_precio
                 return True
             actual = actual.siguiente
         return False
     
-    def obtener_max_id_por_tipo(self, tipo):
+    def eliminar_venta(self, id_eliminar):
+        if self.esta_vacia():
+            return False
+        
+        # Caso especial: eliminar la cabeza
+        if self.cabeza.datos[0] == id_eliminar:
+            self.cabeza = self.cabeza.siguiente
+            return True
+        
+        # Buscar el nodo a eliminar
+        actual = self.cabeza
+        anterior = None
+        
+        while actual is not None:
+            if actual.datos[0] == id_eliminar:
+                anterior.siguiente = actual.siguiente
+                return True
+            anterior = actual
+            actual = actual.siguiente
+        
+        return False
+    
+    def obtener_max_id(self):
+        if self.esta_vacia():
+            return 0
         max_id = 0
         actual = self.cabeza
         while actual is not None:
-            if actual.datos[1] == tipo:
-                try:
-                    id_actual = int(actual.datos[0])
-                    if id_actual > max_id:
-                        max_id = id_actual
-                except ValueError:
-                    continue
+            try:
+                id_actual = int(actual.datos[0])
+                if id_actual > max_id:
+                    max_id = id_actual
+            except ValueError:
+                continue
             actual = actual.siguiente
         return max_id
+    
+    def calcular_totales(self):
+        total_ingresos = 0
+        total_ventas = 0
+        actual = self.cabeza
+        
+        while actual is not None:
+            try:
+                cantidad = int(actual.datos[2])
+                precio = float(actual.datos[3])
+                total_venta = cantidad * precio
+                total_ingresos += total_venta
+                total_ventas += 1
+            except ValueError:
+                continue
+            actual = actual.siguiente
+        
+        return total_ingresos, total_ventas
 
-class SistemaGestion:
+class SistemaVentas:
     def __init__(self):
         self.archivo_csv = "info.csv"
-        self.lista_datos = ListaEnlazada()
+        self.lista_ventas = ListaEnlazadaVentas()
         self.inicializar_archivo()
         self.cargar_datos()
     
@@ -93,30 +121,26 @@ class SistemaGestion:
         if not os.path.exists(self.archivo_csv):
             with open(self.archivo_csv, 'w', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
-                writer.writerow(['id', 'tipo', 'id_referencia', 'nombre', 'precio', 'cantidad', 'estado', 'fecha'])
+                writer.writerow(['id', 'producto', 'cantidad', 'precio_unitario', 'fecha'])
     
     def cargar_datos(self):
         try:
             with open(self.archivo_csv, 'r', encoding='utf-8') as file:
                 reader = csv.reader(file)
                 
-                # Verificar si el archivo tiene contenido además de la cabecera
+                # Saltar cabecera si existe
                 try:
                     header = next(reader)
                 except StopIteration:
-                    # Archivo vacío, solo tiene cabecera o está vacío
+                    # Archivo vacío
                     return
                 
                 for row in reader:
-                    if row and len(row) == 8:
-                        try:
-                            # Convertir tipos de datos adecuados
-                            row[4] = float(row[4]) if row[4] else 0.0
-                            row[5] = int(row[5]) if row[5] else 1
-                            self.lista_datos.agregar(row)
-                        except ValueError:
-                            print(f"Advertencia: Error al convertir datos en fila: {row}")
-                            continue
+                    if row and len(row) >= 4:
+                        # Asegurar que tenemos 5 columnas
+                        if len(row) == 4:
+                            row.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                        self.lista_ventas.agregar_venta(row)
         except FileNotFoundError:
             print("Archivo no encontrado, se creará uno nuevo.")
         except Exception as e:
@@ -126,324 +150,255 @@ class SistemaGestion:
         try:
             with open(self.archivo_csv, 'w', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
-                writer.writerow(['id', 'tipo', 'id_referencia', 'nombre', 'precio', 'cantidad', 'estado', 'fecha'])
+                writer.writerow(['id', 'producto', 'cantidad', 'precio_unitario', 'fecha'])
                 
-                datos = self.lista_datos.obtener_todos()
-                for dato in datos:
-                    writer.writerow(dato)
+                ventas = self.lista_ventas.obtener_todas_ventas()
+                for venta in ventas:
+                    writer.writerow(venta)
         except Exception as e:
             print(f"Error al guardar datos: {e}")
     
-    def obtener_proximo_id(self, tipo):
-        return self.lista_datos.obtener_max_id_por_tipo(tipo) + 1
-    
-    def registrar_cliente(self):
-        print("\n--- REGISTRAR NUEVO CLIENTE ---")
-        nombre = input("Nombre: ").strip()
-        apellido = input("Apellido: ").strip()
-        telefono = input("Teléfono: ").strip()
+    def crear_venta(self):
+        print("\n--- CREAR NUEVA VENTA ---")
         
-        if not nombre or not apellido:
-            print("Error: Nombre y apellido son obligatorios.")
+        # Generar ID automático
+        nuevo_id = self.lista_ventas.obtener_max_id() + 1
+        
+        producto = input("Producto: ").strip()
+        if not producto:
+            print("Error: El producto no puede estar vacío.")
             return
         
-        cliente_id = self.obtener_proximo_id("cliente")
-        nombre_completo = f"{nombre} {apellido} - {telefono}"
+        try:
+            cantidad = int(input("Cantidad: "))
+            precio_unitario = float(input("Precio unitario: "))
+            
+            if cantidad <= 0 or precio_unitario <= 0:
+                print("Error: La cantidad y el precio deben ser mayores a 0.")
+                return
+                
+        except ValueError:
+            print("Error: La cantidad y el precio deben ser números válidos.")
+            return
         
-        datos_cliente = [
-            str(cliente_id), "cliente", "", nombre_completo, "0", "1", "activo", datetime.now().strftime("%Y-%m-%d")
+        fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        nueva_venta = [
+            str(nuevo_id), producto, str(cantidad), str(precio_unitario), fecha
         ]
         
-        self.lista_datos.agregar(datos_cliente)
+        self.lista_ventas.agregar_venta(nueva_venta)
         self.guardar_datos()
-        print(f"Cliente registrado exitosamente con ID: {cliente_id}")
-    
-    def listar_clientes(self):
-        print("\nLISTADO DE CLIENTES")
-        clientes = self.lista_datos.buscar_por_tipo("cliente")
         
-        if not clientes:
-            print("No hay clientes registrados.")
+        total_venta = cantidad * precio_unitario
+        print(f"✓ Venta creada exitosamente (ID: {nuevo_id})")
+        print(f"  Total: ${total_venta:.2f}")
+    
+    def listar_ventas(self):
+        print("\n--- LISTA DE VENTAS ---")
+        
+        ventas = self.lista_ventas.obtener_todas_ventas()
+        
+        if not ventas:
+            print("No hay ventas registradas.")
             return
         
-        print(f"{'ID':<5} {'Nombre':<20} {'Apellido':<15} {'Teléfono':<12} {'Estado':<8}")
-        print("-" * 65)
+        print(f"{'ID':<5} {'Producto':<20} {'Cantidad':<10} {'Precio Unit.':<12} {'Total':<12} {'Fecha':<16}")
+        print("-" * 80)
         
-        for cliente in clientes:
-            # Extraer información del formato "Nombre Apellido - Teléfono"
-            partes = cliente[3].split(' - ')
-            if len(partes) >= 2:
-                nombre_apellido = partes[0]
-                telefono = partes[1]
-                nombre_parts = nombre_apellido.split(' ')
-                nombre = nombre_parts[0] if nombre_parts else ""
-                apellido = ' '.join(nombre_parts[1:]) if len(nombre_parts) > 1 else ""
-            else:
-                nombre = cliente[3]
-                apellido = ""
-                telefono = "N/A"
-            
-            print(f"{cliente[0]:<5} {nombre:<20} {apellido:<15} {telefono:<12} {cliente[6]:<8}")
-    
-    def eliminar_cliente(self):
-        print("\nELIMINAR CLIENTE")
-        self.listar_clientes()
-        
-        try:
-            cliente_id = input("\nID del cliente a eliminar: ").strip()
-            
-            cliente = self.lista_datos.buscar_por_id(cliente_id, "cliente")
-            if not cliente:
-                print("Cliente no encontrado.")
-                return
-            
-            if self.lista_datos.modificar_estado(cliente_id, "inactivo"):
-                self.guardar_datos()
-                print("Cliente marcado como inactivo exitosamente.")
-            else:
-                print("Error al eliminar el cliente.")
-                
-        except Exception as e:
-            print(f"Error: {e}")
-    
-    def registrar_pedido(self):
-        print("\n--- REGISTRAR NUEVO PEDIDO ---")
-        self.listar_clientes()
-        
-        try:
-            cliente_id = input("\nID del cliente: ").strip()
-            
-            cliente = self.lista_datos.buscar_por_id(cliente_id, "cliente")
-            if not cliente or cliente[6] != "activo":
-                print("Cliente no encontrado o inactivo.")
-                return
-            
-            producto = input("Producto: ").strip()
-            try:
-                precio = float(input("Precio: "))
-                cantidad = int(input("Cantidad: "))
-            except ValueError:
-                print("Precio y cantidad deben ser números válidos.")
-                return
-            
-            if precio < 0 or cantidad <= 0:
-                print("Precio no puede ser negativo y cantidad debe ser mayor a 0.")
-                return
-            
-            pedido_id = self.obtener_proximo_id("pedido")
-            
-            datos_pedido = [
-                str(pedido_id), "pedido", cliente_id, producto, str(precio), str(cantidad), "activo", 
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ]
-            
-            self.lista_datos.agregar(datos_pedido)
-            self.guardar_datos()
-            print(f"Pedido registrado exitosamente con ID: {pedido_id}")
-            
-        except Exception as e:
-            print(f"Error: {e}")
-    
-    def listar_pedidos_cliente(self):
-        print("\nLISTAR PEDIDOS POR CLIENTE")
-        self.listar_clientes()
-        
-        try:
-            cliente_id = input("\nID del cliente: ").strip()
-            
-            cliente = self.lista_datos.buscar_por_id(cliente_id, "cliente")
-            if not cliente:
-                print("Cliente no encontrado")
-                return
-            
-            pedidos = self.lista_datos.buscar_por_tipo("pedido")
-            pedidos_cliente = [p for p in pedidos if p[2] == cliente_id]
-            
-            print(f"\nPedidos de {cliente[3].split(' - ')[0]}:")
-            print(f"{'ID':<5} {'Producto':<20} {'Precio':<10} {'Cantidad':<8} {'Estado':<8}")
-            print("-" * 55)
-            
-            if not pedidos_cliente:
-                print("No se encontraron pedidos para este cliente")
-                return
-            
-            for pedido in pedidos_cliente:
-                print(f"{pedido[0]:<5} {pedido[3]:<20} {float(pedido[4]):<10.2f} {pedido[5]:<8} {pedido[6]:<8}")
-                
-        except Exception as e:
-            print(f"Error: {e}")
-    
-    def registrar_venta(self):
-        print("\n--- REGISTRAR VENTA ---")
-        self.listar_clientes()
-        
-        try:
-            cliente_id = input("\nID del cliente: ").strip()
-            
-            cliente = self.lista_datos.buscar_por_id(cliente_id, "cliente")
-            if not cliente or cliente[6] != "activo":
-                print("Cliente no encontrado o inactivo.")
-                return
-            
-            producto = input("Producto: ").strip()
-            try:
-                precio = float(input("Precio: "))
-                cantidad = int(input("Cantidad: "))
-            except ValueError:
-                print("Precio y cantidad deben ser números válidos.")
-                return
-            
-            if precio <= 0 or cantidad <= 0:
-                print("Precio y cantidad deben ser mayores a 0.")
-                return
-            
-            venta_id = self.obtener_proximo_id("venta")
-            
-            datos_venta = [
-                str(venta_id), "venta", cliente_id, producto, str(precio), str(cantidad), "completada", 
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ]
-            
-            self.lista_datos.agregar(datos_venta)
-            self.guardar_datos()
-            
-            total = precio * cantidad
-            print(f"Venta registrada exitosamente. ID: {venta_id}, Total: ${total:.2f}")
-            
-        except Exception as e:
-            print(f"Error: {e}")
-    
-    def listar_ventas_cliente(self):
-        print("\nLISTAR VENTAS POR CLIENTE")
-        
-        nombre_buscar = input("Nombre del cliente: ").strip()
-        
-        if not nombre_buscar:
-            print("Debe ingresar un nombre para buscar.")
-            return
-        
-        clientes = self.lista_datos.buscar_por_nombre(nombre_buscar, "cliente")
-        
-        if not clientes:
-            print("No se encontraron clientes con ese nombre")
-            return
-        
-        if len(clientes) > 1:
-            print("\nClientes encontrados:")
-            for i, cliente in enumerate(clientes, 1):
-                nombre_display = cliente[3].split(' - ')[0]
-                print(f"{i}. {nombre_display}")
-            
-            try:
-                seleccion = int(input("\nSeleccione el cliente: ")) - 1
-                if seleccion < 0 or seleccion >= len(clientes):
-                    print("Selección inválida")
-                    return
-                cliente_seleccionado = clientes[seleccion]
-            except ValueError:
-                print("Selección inválida.")
-                return
-        else:
-            cliente_seleccionado = clientes[0]
-        
-        ventas = self.lista_datos.buscar_por_tipo("venta")
-        ventas_cliente = [v for v in ventas if v[2] == cliente_seleccionado[0]]
-        
-        if not ventas_cliente:
-            nombre_cliente = cliente_seleccionado[3].split(' - ')[0]
-            print(f"No se encontraron ventas para {nombre_cliente}")
-            return
-        
-        nombre_cliente = cliente_seleccionado[3].split(' - ')[0]
-        print(f"\nVentas de {nombre_cliente}:")
-        print(f"{'ID':<5} {'Producto':<20} {'Precio':<10} {'Cantidad':<8} {'Total':<10} {'Fecha':<16}")
-        print("-" * 75)
-        
-        total_general = 0
-        for venta in ventas_cliente:
-            try:
-                precio = float(venta[4])
-                cantidad = int(venta[5])
-                total_venta = precio * cantidad
-                total_general += total_venta
-                fecha_corta = venta[7].split(' ')[0]  # Solo la fecha, no la hora
-                print(f"{venta[0]:<5} {venta[3]:<20} {precio:<10.2f} {cantidad:<8} {total_venta:<10.2f} {fecha_corta:<16}")
-            except ValueError:
-                continue
-        
-        print("-" * 75)
-        print(f"{'TOTAL GENERAL:':<43} {total_general:.2f}")
-    
-    def mostrar_estadisticas(self):
-        print("\n--- ESTADÍSTICAS DEL SISTEMA ---")
-        
-        # Contar elementos por tipo
-        clientes = self.lista_datos.buscar_por_tipo("cliente")
-        pedidos = self.lista_datos.buscher_por_tipo("pedido")
-        ventas = self.lista_datos.buscar_por_tipo("venta")
-        
-        clientes_activos = len([c for c in clientes if c[6] == "activo"])
-        
-        print(f"Total clientes: {len(clientes)} (Activos: {clientes_activos})")
-        print(f"Total pedidos: {len(pedidos)}")
-        print(f"Total ventas: {len(ventas)}")
-        
-        # Calcular ingresos totales
-        ingresos_totales = 0
         for venta in ventas:
             try:
-                precio = float(venta[4])
-                cantidad = int(venta[5])
-                ingresos_totales += precio * cantidad
+                cantidad = int(venta[2])
+                precio = float(venta[3])
+                total = cantidad * precio
+                fecha_corta = venta[4].split(' ')[0] if len(venta) > 4 else "N/A"
+                print(f"{venta[0]:<5} {venta[1]:<20} {cantidad:<10} ${precio:<11.2f} ${total:<11.2f} {fecha_corta:<16}")
             except ValueError:
-                continue
+                print(f"{venta[0]:<5} {venta[1]:<20} Error en datos")
+    
+    def buscar_por_id(self):
+        print("\n--- BUSCAR VENTA POR ID ---")
         
-        print(f"Ingresos totales: ${ingresos_totales:.2f}")
+        if self.lista_ventas.esta_vacia():
+            print("No hay ventas registradas.")
+            return
+        
+        try:
+            id_buscar = input("Ingrese el ID a buscar: ").strip()
+            
+            venta = self.lista_ventas.buscar_por_id(id_buscar)
+            if not venta:
+                print(f"No se encontró ninguna venta con ID: {id_buscar}")
+                return
+            
+            try:
+                cantidad = int(venta[2])
+                precio = float(venta[3])
+                total = cantidad * precio
+                fecha = venta[4] if len(venta) > 4 else "N/A"
+                
+                print("\n✓ Venta encontrada:")
+                print(f"ID: {venta[0]}")
+                print(f"Producto: {venta[1]}")
+                print(f"Cantidad: {cantidad}")
+                print(f"Precio unitario: ${precio:.2f}")
+                print(f"Total: ${total:.2f}")
+                print(f"Fecha: {fecha}")
+            except ValueError:
+                print("Error: Datos de venta corruptos.")
+                
+        except Exception as e:
+            print(f"Error: {e}")
+    
+    def modificar_venta(self):
+        print("\n--- MODIFICAR VENTA ---")
+        
+        if self.lista_ventas.esta_vacia():
+            print("No hay ventas registradas.")
+            return
+        
+        self.listar_ventas()
+        
+        try:
+            id_modificar = input("\nIngrese el ID de la venta a modificar: ").strip()
+            
+            venta = self.lista_ventas.buscar_por_id(id_modificar)
+            if not venta:
+                print(f"No se encontró ninguna venta con ID: {id_modificar}")
+                return
+            
+            try:
+                cantidad_actual = int(venta[2])
+                precio_actual = float(venta[3])
+                total_actual = cantidad_actual * precio_actual
+                
+                print(f"\nVenta actual: {venta[1]} - Cantidad: {cantidad_actual} - Precio: ${precio_actual:.2f} - Total: ${total_actual:.2f}")
+                
+                nuevo_producto = input("Nuevo producto (Enter para mantener actual): ").strip()
+                nueva_cantidad = None
+                nuevo_precio = None
+                
+                input_cantidad = input("Nueva cantidad (Enter para mantener actual): ").strip()
+                if input_cantidad:
+                    nueva_cantidad = int(input_cantidad)
+                    if nueva_cantidad <= 0:
+                        print("La cantidad debe ser mayor a 0")
+                        return
+                
+                input_precio = input("Nuevo precio unitario (Enter para mantener actual): ").strip()
+                if input_precio:
+                    nuevo_precio = float(input_precio)
+                    if nuevo_precio <= 0:
+                        print("El precio debe ser mayor a 0")
+                        return
+                
+                if self.lista_ventas.modificar_venta(id_modificar, nuevo_producto, nueva_cantidad, nuevo_precio):
+                    self.guardar_datos()
+                    print("✓ Venta modificada exitosamente")
+                else:
+                    print("Error al modificar la venta")
+                    
+            except ValueError:
+                print("Error: Ingrese valores numéricos válidos")
+                
+        except Exception as e:
+            print(f"Error: {e}")
+    
+    def eliminar_venta(self):
+        print("\n--- ELIMINAR VENTA ---")
+        
+        if self.lista_ventas.esta_vacia():
+            print("No hay ventas registradas.")
+            return
+        
+        self.listar_ventas()
+        
+        try:
+            id_eliminar = input("\nIngrese el ID de la venta a eliminar: ").strip()
+            
+            venta = self.lista_ventas.buscar_por_id(id_eliminar)
+            if not venta:
+                print(f"No se encontró ninguna venta con ID: {id_eliminar}")
+                return
+            
+            try:
+                cantidad = int(venta[2])
+                precio = float(venta[3])
+                total = cantidad * precio
+                
+                print(f"\nVenta a eliminar: {venta[1]} - Cantidad: {cantidad} - Precio: ${precio:.2f} - Total: ${total:.2f}")
+                
+                confirmacion = input("¿Está seguro de eliminar esta venta? (s/n): ").strip().lower()
+                if confirmacion == 's':
+                    if self.lista_ventas.eliminar_venta(id_eliminar):
+                        self.guardar_datos()
+                        print("✓ Venta eliminada exitosamente")
+                    else:
+                        print("Error al eliminar la venta")
+                else:
+                    print("Eliminación cancelada")
+                    
+            except ValueError:
+                print("Error: Datos de venta corruptos")
+                
+        except Exception as e:
+            print(f"Error: {e}")
+    
+    def calcular_totales(self):
+        print("\n--- TOTALES ---")
+        
+        if self.lista_ventas.esta_vacia():
+            print("No hay ventas registradas.")
+            return
+        
+        total_ingresos, total_ventas = self.lista_ventas.calcular_totales()
+        
+        print(f"Total de ventas realizadas: {total_ventas}")
+        print(f"Ingreso total: ${total_ingresos:.2f}")
+        
+        # Mostrar promedio por venta
+        if total_ventas > 0:
+            promedio = total_ingresos / total_ventas
+            print(f"Promedio por venta: ${promedio:.2f}")
     
     def mostrar_menu(self):
         while True:
             print("\n" + "="*50)
-            print("SISTEMA DE GESTIÓN INTEGRADO")
+            print("SISTEMA DE GESTIÓN DE VENTAS")
             print("="*50)
-            print("1. Registrar cliente")
-            print("2. Listar clientes")
-            print("3. Eliminar cliente")
-            print("4. Registrar pedido")
-            print("5. Listar pedidos de cliente")
-            print("6. Registrar venta")
-            print("7. Listar ventas por cliente")
-            print("8. Estadísticas del sistema")
-            print("9. Salir")
+            print("1. Crear nueva venta")
+            print("2. Listar ventas")
+            print("3. Buscar por ID")
+            print("4. Modificar venta")
+            print("5. Eliminar venta")
+            print("6. Calcular totales")
+            print("7. Salir")
             print("="*50)
             
             try:
-                opcion = input("Seleccione una opción (1-9): ").strip()
+                opcion = input("Seleccione una opción (1-7): ").strip()
                 
                 if opcion == "1":
-                    self.registrar_cliente()
+                    self.crear_venta()
                 elif opcion == "2":
-                    self.listar_clientes()
+                    self.listar_ventas()
                 elif opcion == "3":
-                    self.eliminar_cliente()
+                    self.buscar_por_id()
                 elif opcion == "4":
-                    self.registrar_pedido()
+                    self.modificar_venta()
                 elif opcion == "5":
-                    self.listar_pedidos_cliente()
+                    self.eliminar_venta()
                 elif opcion == "6":
-                    self.registrar_venta()
+                    self.calcular_totales()
                 elif opcion == "7":
-                    self.listar_ventas_cliente()
-                elif opcion == "8":
-                    self.mostrar_estadisticas()
-                elif opcion == "9":
                     print("¡Gracias por usar el sistema!")
                     break
                 else:
-                    print("Opción no válida. Intente nuevamente.")
+                    print("Opción no válida. Por favor, seleccione 1-7")
                     
             except Exception as e:
                 print(f"Error: {e}")
 
 if __name__ == "__main__":
-    sistema = SistemaGestion()
+    sistema = SistemaVentas()
     sistema.mostrar_menu()
