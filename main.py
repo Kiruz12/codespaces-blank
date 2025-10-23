@@ -41,26 +41,14 @@ class LinkedList:
         current = self.head
         while current:
             c = current.data
-            if c.name.strip().lower() == name.strip().lower() and c.surname.strip().lower() == surname.strip().lower():
+            if c.name == name and c.surname == surname:
                 return current.data
             current = current.next
         return None
 
     def find_by_id(self, cid):
         current = self.head
-        while current:
-            c = current.data
-            if c.id == cid:
-                return current.data
-            current = current.next
-        return None
-
-def input_int(prompt: str) -> int:
-    while True:
-        try:
-            return int(input(prompt))
-        except ValueError:
-            print("Ingrese un número entero válido.")
+        
 
 
 def main_menu():
@@ -70,36 +58,24 @@ def main_menu():
         print("\nMenú:")
         print("1. Registrar Cliente")
         print("2. Lista Clientes")
-        print("3. eliminar cliente")
+        print("3. Eliminar Cliente")
 
-        choice = input("elige una opcion: ").strip()
+        choice = input("Elige una opción: ")
 
         if choice == '1':
-            name = input("ingresa nombre del cliente: ").strip()
-            surname = input("ingresa el apellido del cliente: ").strip()
+            name = input("Ingresa nombre del cliente: ")
+            surname = input("Ingresa el apellido del cliente: ")
             client = client_list.add(name, surname)
             print(f"Cliente registrado. ID asignado: {client.id}")
 
         elif choice == '2':
             print("Clientes:")
-            any_client = False
             for client in client_list.traverse():
-                any_client = True
                 print(client.display_info())
-            if not any_client:
-                print("No hay clientes aún.")
 
-        elif choice == '3':
-            cid = input_int("Ingresa el ID del cliente que quiere eliminar: ")
-            client = client_list.find_by_id(cid)
-            if client:
-                client.active = False
-                print(f"Client {client.name} {client.surname} (ID {client.id}) fue eliminado.")
-            else:
-                print("Cliente no encontrado.")
 
         else:
-            print("invalido.")
+            print("Opción inválida.")
 
 
 if __name__ == "__main__":
