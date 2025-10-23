@@ -44,14 +44,6 @@ class LinkedList:
             current = current.next
         return None
 
-    def find_by_id(self, client_id):
-        current = self.head
-        while current:
-            if current.data.id == client_id:
-                return current.data
-            current = current.next
-        return None
-
 
 def input_int(prompt: str) -> int:
     while True:
