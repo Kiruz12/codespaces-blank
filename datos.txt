@@ -1,7 +1,0 @@
-id,name,lastname,status
-1,1,Juan,lopez,1
-2,Juan,lopez,1
-3,3,Juan,lopez,1
-4,Juan,lopez,1
-5,5,Juan,lopez,1
-6,Juan,lopez,1
