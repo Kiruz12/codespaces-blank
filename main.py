@@ -30,10 +30,12 @@ class LinkedList:
         return new_client
 
     def traverse(self):
+        clients = []
         current = self.head
         while current:
-            yield current.data
+            clients.append(current.data)
             current = current.next
+        return clients
 
     def find_by_name_surname(self, name, surname):
         current = self.head
@@ -44,6 +46,14 @@ class LinkedList:
             current = current.next
         return None
 
+    def find_by_id(self, cid):
+        current = self.head
+        while current:
+            c = current.data
+            if c.id == cid:
+                return current.data
+            current = current.next
+        return None
 
 def input_int(prompt: str) -> int:
     while True:
